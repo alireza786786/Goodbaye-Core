@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.pyc
+
+# داده‌ی محلی و کش
+history.db
+history.db-*
+.geo_cache*
+.xray_bin/
+
+# اسرار
+.env
+
+# خروجی (اگر می‌خواهید اشتراک commit شود این‌ها را حذف کنید)
+# subscription_part*.txt
