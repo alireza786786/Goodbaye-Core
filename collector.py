@@ -1186,39 +1186,38 @@ class TelegramSender:
         self.base = f"https://api.telegram.org/bot{CFG.BOT_TOKEN}"
         self.semaphore = asyncio.Semaphore(3)
 
-    def build_parts(self, nodes: List[ScoredNode]) -> List[Tuple[str, str]]:
-        """فایل‌های txt (چانک‌ها) + کپشن هرکدام."""
-        parts = []
+    def build_single_file(self, nodes: List[ScoredNode]) -> Tuple[str, str]:
+        """تمامی کانفیگ‌ها در یک فایل واحد (نه چانک‌بندی)."""
         protocols = len({n.protocol for n in nodes})
         countries = len({n.country for n in nodes})
-        for i in range(0, len(nodes), CFG.CHUNK_SIZE):
-            n = (i // CFG.CHUNK_SIZE) + 1
-            chunk = nodes[i:i + CFG.CHUNK_SIZE]
-            fname = f"subscription_part{n}.txt"
-            header = build_header(len(chunk), protocols, countries)
-            # dedup خطِ نهایی (رشتهٔ کامل) — اطمینان از نبود تکرار
-            seen = set()
-            lines = []
-            for x in chunk:
-                if x.config not in seen:
-                    seen.add(x.config)
-                    lines.append(x.config)
-            with open(fname, "w", encoding="utf-8") as f:
-                f.write(header + "\n".join(lines) + "\n")
-                # پایان‌نامه: شمارش صریح کانفیگِ همین فایل تا به‌راحتی دیده شود
-                f.write("# ═══════════════════════════════════════════════════════\n")
-                f.write(f"#  ✅ {len(lines)} کانفیگ در این فایل | آخرین بروزرسانی {_now_str()}\n")
-                f.write("# ═══════════════════════════════════════════════════════\n")
-            caption = (
-                f"🔥 *اشتراک هوشمند — پارت {n}*\n"
-                f"📦 فایل: `{fname}`\n"
-                f"📊 *{len(lines)}* کانفیگ تاییدشده (پینگ واقعی <{CFG.MAX_FINAL_PING_MS}ms)\n"
-                f"🕒 به‌روز: {_now_str()}\n\n"
-                f"💬 گروه: {CFG.CHAT_GROUP_LINK}\n"
-                f"✨ کانال: {CFG.TELEGRAM_LINK}"
-            )
-            parts.append((fname, caption))
-        return parts
+
+        header = build_header(len(nodes), protocols, countries)
+        # dedup خطِ نهایی (رشتهٔ کامل)
+        seen = set()
+        lines = []
+        for x in nodes:
+            if x.config not in seen:
+                seen.add(x.config)
+                lines.append(x.config)
+
+        fname = "subscription.txt"
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(header + "\n".join(lines) + "\n")
+            # پایان‌نامه: شمارش صریح
+            f.write("# ═══════════════════════════════════════════════════════\n")
+            f.write(f"#  ✅ {len(lines)} کانفیگ در این فایل | آخرین بروزرسانی {_now_str()}\n")
+            f.write("# ═══════════════════════════════════════════════════════\n")
+
+        caption = (
+            f"🔥 *اشتراک هوشمند — کامل*\n"
+            f"📦 فایل: `{fname}`\n"
+            f"📊 *{len(lines)}* کانفیگ تاییدشده (پینگ واقعی <{CFG.MAX_FINAL_PING_MS}ms)\n"
+            f"🕒 به‌روز: {_now_str()}\n\n"
+            f"💬 گروه: {CFG.CHAT_GROUP_LINK}\n"
+            f"✨ کانال: {CFG.TELEGRAM_LINK}"
+        )
+        log.info("   📄 یک فایل واحد ساخته شد: %s (%d کانفیگ)", fname, len(lines))
+        return (fname, caption)
 
     async def _send_one(self, session, file_path: str, caption: str, num: int) -> bool:
         async with self.semaphore:
@@ -1367,17 +1366,17 @@ async def run_pipeline() -> int:
         ok_final.sort(key=lambda n: n.ping or 0)
 
         # 10) ساخت فایل‌ها و ارسال به کانال
-        log.info("📤 مرحله 10: ساخت فایل‌ها و ارسال...")
+        log.info("📤 مرحله 10: ساخت فایل و ارسال...")
         sender = TelegramSender()
-        parts = sender.build_parts(ok_final)
-        await sender.send_all(parts)
+        fname, caption = sender.build_single_file(ok_final)
+        await sender.send_all([(fname, caption)])
 
         elapsed = time.time() - start
         log.info("=" * 60)
         log.info("✨ تمام شد در %.1f ثانیه", elapsed)
-        log.info("📊 خام: %d | پارس: %d | تست‌شده: %d | نهایی(<%dms): %d | فایل: %d",
+        log.info("📊 خام: %d | پارس: %d | تست‌شده: %d | نهایی(<%dms): %d | فایل: %s",
                  len(all_configs), len(parsed_list), len(tested),
-                 CFG.MAX_FINAL_PING_MS, len(ok_final), len(parts))
+                 CFG.MAX_FINAL_PING_MS, len(ok_final), fname)
         log.info("=" * 60)
     return 0
 
