@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+history.db
+history.db-*
+.xray_bin/
+.env
