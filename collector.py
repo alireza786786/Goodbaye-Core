@@ -1205,6 +1205,10 @@ class TelegramSender:
                     lines.append(x.config)
             with open(fname, "w", encoding="utf-8") as f:
                 f.write(header + "\n".join(lines) + "\n")
+                # پایان‌نامه: شمارش صریح کانفیگِ همین فایل تا به‌راحتی دیده شود
+                f.write("# ═══════════════════════════════════════════════════════\n")
+                f.write(f"#  ✅ {len(lines)} کانفیگ در این فایل | آخرین بروزرسانی {_now_str()}\n")
+                f.write("# ═══════════════════════════════════════════════════════\n")
             caption = (
                 f"🔥 *اشتراک هوشمند — پارت {n}*\n"
                 f"📦 فایل: `{fname}`\n"
