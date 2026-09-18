@@ -37,21 +37,19 @@ jobs:
           XRAY_ARCH: Xray-linux-64.zip
         run: python3 collector.py
 
-      - name: Upload subscription artifact
+      - name: Upload subscription artifacts
         uses: actions/upload-artifact@v5
         with:
           name: subscriptions
-          path: subscription.txt
+          path: |
+            subscription.txt
+            network_ok.txt
           if-no-files-found: error
 
-      - name: Commit updated subscription to repo
+      - name: Commit updated files to repo
         run: |
           git config user.name "collector-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add subscription.txt
+          git add subscription.txt network_ok.txt
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update subscription $(date -u +'%Y-%m-%d %H:%M')"
-            git push
-          else
-            echo "no changes to commit"
-          fi
+            git commit -m "chore: update subscription $(date -u +'%Y-%m-%d %H
