@@ -1163,6 +1163,28 @@ def _now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
+def write_network_pool(results: List["TestResult"]) -> str:
+    """گروهی که از تستِ شبکه گذشتند (پیش از تست واقعی) برای بازبینی در فایل جدا.
+    این فایل داخل ریپو commit می‌شود تا تنها همان 508 را ببینید، بدون دخالت کانال."""
+    fname = "network_ok.txt"
+    seen = set()
+    lines = []
+    for r in results:
+        if r.config not in seen:
+            seen.add(r.config)
+            lines.append(r.config)
+    header = (
+        "# ═══════════════════════════════════════════════════════\n"
+        "#  🔎 استخر سالم پس از تستِ شبکه (پیش از تست واقعی Xray)\n"
+        f"#  📊 {len(lines)} کانفیگ · {_now_str()}\n"
+        "# ═══════════════════════════════════════════════════════\n"
+    )
+    with open(fname, "w", encoding="utf-8") as f:
+        f.write(header + "\n".join(lines) + "\n")
+    log.info("   📄 استخرِ تست‌شدهٔ شبکه ذخیره شد: %s (%d)", fname, len(lines))
+    return fname
+
+
 def build_header(total: int, protocols: int, countries: int) -> str:
     """هدرِ زیبا با اطلاعات دقیقاً مطابق خواسته‌ی شما + تزئینات."""
     return (
@@ -1319,6 +1341,9 @@ async def run_pipeline() -> int:
         if not tested:
             log.warning("⚠️ هیچ گره‌ای از تست شبکه نگذشت.")
             return 0
+
+        # ذخیرهٔ استخرِ سالمِ پس از تست شبکه در فایل جدا (قبل از تست واقعی)
+        write_network_pool(tested)
 
         # 6) جغرافیا
         log.info("🌍 مرحله 6: جغرافیا...")
